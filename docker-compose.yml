@@ -1,0 +1,16 @@
+services:
+  swoole-php:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile
+    volumes:
+      - .:/var/www
+    working_dir: /var/www
+    command: tail -f /dev/null
+
+  sfrpc-go-test:
+    image: golang:1.23
+    volumes:
+      - .:/var/www
+    working_dir: /var/www/tools/protoc-gen-sfrpc
+    command: tail -f /dev/null

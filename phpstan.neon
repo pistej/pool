@@ -1,0 +1,10 @@
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+    treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        - '#Cannot access property.*on mixed#'
+        - '#Swoole.Coroutine#'
+        - '#Cannot cast mixed to (int|string)#'
