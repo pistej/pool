@@ -114,7 +114,23 @@ docker compose exec swoole-php vendor/bin/phpcbf
 ```
 
 ### Run Go Generator Unit Tests
+
+We use a standalone higher-version Golang container (`sfrpc-go-test`) to run the toolchain tests and generate code.
+
+#### Build the Generator Image
+If you modify the Dockerfile or need to build it for the first time:
 ```bash
-# We use a standalone Golang container to run the toolchain tests
+docker compose build sfrpc-go-test
+```
+
+#### Run tests
+```bash
 docker compose exec sfrpc-go-test go test -v ./...
+```
+
+*Note: If you add new `.proto` files with new dependencies, you might need to run `go mod tidy` in the container.*
+
+#### Generate PHP Code from Proto
+```bash
+docker compose exec sfrpc-go-test buf generate
 ```

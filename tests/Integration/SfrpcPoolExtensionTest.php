@@ -8,7 +8,11 @@ use Sfrpc\Pool\ConnectionPool\ConnectionPool;
 use Sfrpc\Pool\DependencyInjection\SfrpcPoolExtension;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
-class DummyProxy
+interface DummyInterface
+{
+}
+
+class DummyProxy implements DummyInterface
 {
 }
 
@@ -19,7 +23,6 @@ class SfrpcPoolExtensionTest extends TestCase
         $container = new ContainerBuilder();
         $extension = new SfrpcPoolExtension();
 
-        // Mock config mimicking config/packages/sfrpc_pool.yaml
         $config = [
             'worker_started_event' => 'App\Event\WorkerStart',
             'pools' => [
@@ -36,19 +39,50 @@ class SfrpcPoolExtensionTest extends TestCase
 
         $extension->load([$config], $container);
 
-        // Assert the pool was registered
+        // 1. Assert Pool
         $poolId = 'sfrpc_pool.pool.greeter';
-        $this->assertTrue($container->hasDefinition($poolId), 'Pool definition should exist');
-
+        $this->assertTrue($container->hasDefinition($poolId));
         $poolDef = $container->getDefinition($poolId);
-        $this->assertSame(ConnectionPool::class, $poolDef->getClass());
+        $this->assertTrue($poolDef->isPublic());
+        $this->assertTrue($poolDef->isAutowired());
+        $this->assertTrue($poolDef->hasTag('sfrpc_pool.pool'));
 
-        // Assert the proxy was registered and injects the pool
-        $this->assertTrue($container->hasDefinition(DummyProxy::class), 'Proxy definition should exist');
+        // 2. Assert Alias for ConnectionPool::class
+        $this->assertTrue($container->hasAlias(ConnectionPool::class));
+        $this->assertSame($poolId, (string) $container->getAlias(ConnectionPool::class));
 
+        // 3. Assert Proxy
+        $this->assertTrue($container->hasDefinition(DummyProxy::class));
         $proxyDef = $container->getDefinition(DummyProxy::class);
-        $args = $proxyDef->getArguments();
-        $this->assertCount(1, $args);
-        $this->assertSame($poolId, (string) $args[0], 'Proxy should have the pool injected as reference');
+        $this->assertTrue($proxyDef->isPublic());
+        $this->assertTrue($proxyDef->isAutowired());
+        $this->assertTrue($proxyDef->hasTag('sfrpc_pool.proxy'));
+    }
+
+    public function testCompilerPassAliasesInterfaces(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new SfrpcPoolExtension();
+
+        $config = [
+            'pools' => [
+                'default' => [
+                    'host' => '127.0.0.1',
+                    'port' => 80,
+                    'proxies' => [DummyProxy::class]
+                ]
+            ]
+        ];
+
+        $extension->load([$config], $container);
+
+        // Now manually run the pass
+        $pass = new \Sfrpc\Pool\DependencyInjection\Compiler\ProxyInterfaceAliasPass();
+        $pass->process($container);
+
+        // Assert that DummyInterface is now an alias for DummyProxy class definition
+        $this->assertTrue($container->hasAlias(DummyInterface::class));
+        $this->assertSame(DummyProxy::class, (string) $container->getAlias(DummyInterface::class));
+        $this->assertTrue($container->getAlias(DummyInterface::class)->isPublic());
     }
 }

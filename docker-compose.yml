@@ -9,7 +9,10 @@ services:
     command: tail -f /dev/null
 
   sfrpc-go-test:
-    image: golang:1.23
+    image: mybufgen:latest
+    build:
+      context: .
+      dockerfile: tools/protoc-gen-sfrpc/.docker/Dockerfile
     volumes:
       - .:/var/www
     working_dir: /var/www/tools/protoc-gen-sfrpc
