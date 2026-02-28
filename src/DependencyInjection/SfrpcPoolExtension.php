@@ -22,7 +22,7 @@ class SfrpcPoolExtension extends Extension
         $config = $this->processConfiguration($configuration, $configs);
 
         $poolServices = [];
-
+        $defaultPoolId = null;
         foreach ($config['pools'] as $name => $poolConfig) {
             $poolConfigDef = new Definition(PoolConfig::class, [
                 $poolConfig['min_active'],
@@ -49,25 +49,41 @@ class SfrpcPoolExtension extends Extension
                 new Reference('logger', ContainerBuilder::NULL_ON_INVALID_REFERENCE)
             ]);
             $poolDef->addTag('sfrpc_pool.pool');
+            $poolDef->setAutowired(true);
+            $poolDef->setPublic(true);
             $poolId = sprintf('sfrpc_pool.pool.%s', $name);
             $container->setDefinition($poolId, $poolDef);
 
             $poolServices[] = new Reference($poolId);
+
+            if ($defaultPoolId === null || $name === 'default') {
+                $defaultPoolId = $poolId;
+            }
 
             if (isset($poolConfig['proxies']) && is_array($poolConfig['proxies'])) {
                 foreach ($poolConfig['proxies'] as $proxyClass) {
                     $proxyDef = new Definition($proxyClass, [
                         new Reference($poolId)
                     ]);
+                    $proxyDef->setAutowired(true);
+                    $proxyDef->setAutoconfigured(true);
+                    $proxyDef->setPublic(true);
+                    $proxyDef->addTag('sfrpc_pool.proxy');
                     $container->setDefinition($proxyClass, $proxyDef);
                 }
             }
+        }
+
+        if ($defaultPoolId !== null) {
+            $container->setAlias(ConnectionPool::class, $defaultPoolId)->setPublic(true);
         }
 
         if (!empty($config['worker_started_event'])) {
             $subscriberDef = new Definition(PoolLifecycleSubscriber::class, [
                 $poolServices
             ]);
+            $subscriberDef->setAutowired(true);
+            $subscriberDef->setPublic(true);
             $subscriberDef->addTag('kernel.event_listener', [
                 'event' => $config['worker_started_event'],
                 'method' => 'onWorkerStarted'
