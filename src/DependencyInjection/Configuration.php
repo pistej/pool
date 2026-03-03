@@ -32,6 +32,7 @@ class Configuration implements ConfigurationInterface
             ->floatNode('max_wait_time')->defaultValue(5.0)->end()
             ->floatNode('max_idle_time')->defaultValue(30.0)->end()
             ->floatNode('idle_check_interval')->defaultValue(10.0)->end()
+            ->booleanNode('debug_logs')->defaultFalse()->end()
             ->arrayNode('swoole_settings')
             ->scalarPrototype()->end()
             ->end()

@@ -18,7 +18,7 @@ class SfrpcPoolExtension extends Extension
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
-        /** @var array{worker_started_event?: string, pools: array<string, array{min_active: int, max_active: int, max_wait_time: float, max_idle_time: float, idle_check_interval: float, host: string, port: int, ssl: bool, swoole_settings?: array<string, mixed>, proxies?: string[]}>} $config */
+        /** @var array{worker_started_event?: string, pools: array<string, array{min_active: int, max_active: int, max_wait_time: float, max_idle_time: float, idle_check_interval: float, debug_logs: bool, host: string, port: int, ssl: bool, swoole_settings?: array<string, mixed>, proxies?: string[]}>} $config */
         $config = $this->processConfiguration($configuration, $configs);
 
         $poolServices = [];
@@ -29,7 +29,8 @@ class SfrpcPoolExtension extends Extension
                 $poolConfig['max_active'],
                 $poolConfig['max_wait_time'],
                 $poolConfig['max_idle_time'],
-                $poolConfig['idle_check_interval']
+                $poolConfig['idle_check_interval'],
+                $poolConfig['debug_logs']
             ]);
             $poolConfigId = sprintf('sfrpc_pool.config.%s', $name);
             $container->setDefinition($poolConfigId, $poolConfigDef);

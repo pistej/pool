@@ -29,9 +29,12 @@ class ConnectionPool
 
     public function init(): void
     {
-        for ($i = 0; $i < $this->config->minActive; $i++) {
-            $this->createConnection();
-        }
+        $this->debug("Initializing pool with min active: {$this->config->minActive}");
+        Coroutine::create(function () {
+            for ($i = 0; $i < $this->config->minActive; $i++) {
+                $this->createConnection();
+            }
+        });
 
         if ($this->config->idleCheckInterval > 0) {
             $this->checkTimerId = Timer::tick(
@@ -54,11 +57,13 @@ class ConnectionPool
 
         $wrapper = $this->pool->pop($this->config->maxWaitTime);
         if ($wrapper === false) {
+            $this->debug("Pool timeout after {$this->config->maxWaitTime}s, no connection available");
             throw new \RuntimeException("Pool timeout after {$this->config->maxWaitTime}s, no connection available");
         }
 
         /** @var ConnectionWrapper $wrapper */
         $connection = $wrapper->getConnection();
+        $this->debug("Borrowed connection. Available in pool: " . $this->pool->length());
 
         if (!$this->connector->isConnected($connection)) {
             $this->connector->disconnect($connection);
@@ -86,7 +91,10 @@ class ConnectionPool
             $wrapper = new ConnectionWrapper($connection, microtime(true));
             if (!$this->pool->push($wrapper, 0.001)) {
                 // If the channel is full (e.g., config changes, or returned too many), we drop it.
+                $this->debug("Pool full, dropping returned connection");
                 $this->removeConnection($connection);
+            } else {
+                $this->debug("Returned connection. Available in pool: " . $this->pool->length());
             }
         } catch (\Throwable $e) {
             $this->removeConnection($connection);
@@ -96,19 +104,22 @@ class ConnectionPool
 
     public function close(): void
     {
+        $this->debug("Closing pool");
         $this->closed = true;
         if ($this->checkTimerId > 0) {
             Timer::clear($this->checkTimerId);
         }
 
-        while (!$this->pool->isEmpty()) {
-            /** @var ConnectionWrapper $wrapper */
-            $wrapper = $this->pool->pop(0.001);
-            if ($wrapper) {
-                $this->removeConnection($wrapper->getConnection());
+        Coroutine::create(function () {
+            while (!$this->pool->isEmpty()) {
+                /** @var ConnectionWrapper $wrapper */
+                $wrapper = $this->pool->pop(0.001);
+                if ($wrapper) {
+                    $this->removeConnection($wrapper->getConnection());
+                }
             }
-        }
-        $this->pool->close();
+            $this->pool->close();
+        });
     }
 
     private function createConnection(): void
@@ -118,9 +129,8 @@ class ConnectionPool
             $this->connectionCount++;
             $wrapper = new ConnectionWrapper($connection, microtime(true));
             $this->pool->push($wrapper, 0.001);
-            $this->logger->debug("Created new connection. Total connections: {$this->connectionCount}");
+            $this->debug("Created new connection. Total connections: {$this->connectionCount}");
         } catch (\Throwable $e) {
-
             $this->logger->error("Failed to create connection: " . $e->getMessage());
         }
     }
@@ -149,7 +159,7 @@ class ConnectionPool
 
             if (($time - $wrapper->getLastUsedAt()) > $this->config->maxIdleTime) {
                 $this->removeConnection($wrapper->getConnection());
-                $this->logger->debug("Closed idle connection. Total connections: {$this->connectionCount}");
+                $this->debug("Closed idle connection. Total connections: {$this->connectionCount}");
             } else {
                 $this->pool->push($wrapper, 0.001);
             }
@@ -161,6 +171,7 @@ class ConnectionPool
     private function removeConnection(object $connection): void
     {
         $this->connectionCount--;
+        $this->debug("Removing connection. Remaining: {$this->connectionCount}");
         Coroutine::create(function () use ($connection) {
             try {
                 $this->connector->disconnect($connection);
@@ -168,5 +179,12 @@ class ConnectionPool
                 // Ignore this exception.
             }
         });
+    }
+
+    private function debug(string $message): void
+    {
+        if ($this->config->debugLogs) {
+            $this->logger->debug($message);
+        }
     }
 }

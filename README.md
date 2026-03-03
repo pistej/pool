@@ -52,6 +52,7 @@ sfrpc_pool:
             max_wait_time: 5.0      # Seconds to wait for a free connection
             max_idle_time: 60.0     # Max time a connection can stay idle
             idle_check_interval: 30.0 # How often to check for idle connections
+            debug_logs: false         # Optional: Enable detailed pool operation logs (default: false)
             swoole_settings:
                 # Optional: Swoole-specific client settings
                 timeout: 5.0
