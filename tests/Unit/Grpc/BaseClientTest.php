@@ -12,42 +12,6 @@ use Swoole\Coroutine\Http2\Client;
 use Swoole\Http2\Request;
 use Swoole\Http2\Response;
 
-
-
-class TestBaseClient extends BaseClient
-{
-    public ?Client $mockClient = null;
-
-    public function __construct(string $host, int $port)
-    {
-        parent::__construct($host, $port);
-    }
-
-    // Override connect to inject the mock client instead of a real one
-    public function connect(): bool
-    {
-        if ($this->mockClient) {
-            $refClass = new \ReflectionClass(BaseClient::class);
-            $propClient = $refClass->getProperty('client');
-            $propClient->setAccessible(true);
-            $propClient->setValue($this, $this->mockClient);
-
-            $propConnected = $refClass->getProperty('connected');
-            $propConnected->setAccessible(true);
-            $propConnected->setValue($this, true);
-
-            return true;
-        }
-
-        return parent::connect();
-    }
-
-    public function callSimpleRequest(string $method, Message $argument, string $deserializeClass, ?ClientContext $context = null): Message
-    {
-        return $this->_simpleRequest($method, $argument, $deserializeClass, $context);
-    }
-}
-
 class BaseClientTest extends TestCase
 {
     public function testSimpleRequestSuccessfullyPackagesData(): void
@@ -63,18 +27,21 @@ class BaseClientTest extends TestCase
 
         $mockClient->expects($this->once())
             ->method('send')
-            ->willReturnCallback(function (Request $request) use ($targetPath) {
+            ->willReturnCallback(function (Request $request) use ($targetPath): int {
                 // Assert the request being sent uses the correct Http2 Request class
                 $this->assertInstanceOf(Request::class, $request);
                 $this->assertSame('POST', $request->method);
                 $this->assertSame($targetPath, $request->path);
-                $this->assertArrayHasKey('content-type', $request->headers);
-                $this->assertSame('application/grpc', $request->headers['content-type']);
-                $this->assertArrayHasKey('foo-header', $request->headers);
-                $this->assertSame('bar-value', $request->headers['foo-header']);
+
+                /** @var array<string, mixed> $headers */
+                $headers = $request->headers;
+                $this->assertArrayHasKey('content-type', $headers);
+                $this->assertSame('application/grpc', $headers['content-type']);
+                $this->assertArrayHasKey('foo-header', $headers);
+                $this->assertSame('bar-value', $headers['foo-header']);
 
                 // Verify the 5-byte length preamble (0 byte for compressed + 4 bytes length)
-                $data = $request->data;
+                $data = (string) $request->data;
                 $this->assertGreaterThanOrEqual(5, strlen($data));
 
                 return 1; // Return a fake stream ID
@@ -93,7 +60,36 @@ class BaseClientTest extends TestCase
             ->method('recv')
             ->willReturn($mockResponse);
 
-        $baseClient = new TestBaseClient('127.0.0.1', 8080);
+        $baseClient = new class ('127.0.0.1', 8080) extends BaseClient {
+            public ?Client $mockClient = null;
+
+            public function connect(): bool
+            {
+                if ($this->mockClient) {
+                    $refClass = new \ReflectionClass(BaseClient::class);
+                    $propClient = $refClass->getProperty('client');
+                    $propClient->setAccessible(true);
+                    $propClient->setValue($this, $this->mockClient);
+
+                    $propConnected = $refClass->getProperty('connected');
+                    $propConnected->setAccessible(true);
+                    $propConnected->setValue($this, true);
+
+                    return true;
+                }
+
+                return parent::connect();
+            }
+
+            public function callSimpleRequest(
+                string $method,
+                Message $arg,
+                string $class,
+                ?ClientContext $ctx = null
+            ): Message {
+                return $this->simpleRequest($method, $arg, $class, $ctx);
+            }
+        };
         $baseClient->mockClient = $mockClient;
 
         // Force connection logic
@@ -125,7 +121,29 @@ class BaseClientTest extends TestCase
 
         $mockClient->expects($this->once())->method('recv')->willReturn($mockResponse);
 
-        $baseClient = new TestBaseClient('127.0.0.1', 8080);
+        $baseClient = new class ('127.0.0.1', 8080) extends BaseClient {
+            public ?Client $mockClient = null;
+
+            public function connect(): bool
+            {
+                if ($this->mockClient) {
+                    $refClass = new \ReflectionClass(BaseClient::class);
+                    $propClient = $refClass->getProperty('client');
+                    $propClient->setAccessible(true);
+                    $propClient->setValue($this, $this->mockClient);
+                    $propConnected = $refClass->getProperty('connected');
+                    $propConnected->setAccessible(true);
+                    $propConnected->setValue($this, true);
+                    return true;
+                }
+                return parent::connect();
+            }
+
+            public function callSimpleRequest(string $m, Message $a, string $c): Message
+            {
+                return $this->simpleRequest($m, $a, $c);
+            }
+        };
         $baseClient->mockClient = $mockClient;
         $baseClient->connect();
 
@@ -150,7 +168,29 @@ class BaseClientTest extends TestCase
 
         $mockClient->expects($this->once())->method('recv')->willReturn($mockResponse);
 
-        $baseClient = new TestBaseClient('127.0.0.1', 8080);
+        $baseClient = new class ('127.0.0.1', 8080) extends BaseClient {
+            public ?Client $mockClient = null;
+
+            public function connect(): bool
+            {
+                if ($this->mockClient) {
+                    $refClass = new \ReflectionClass(BaseClient::class);
+                    $propClient = $refClass->getProperty('client');
+                    $propClient->setAccessible(true);
+                    $propClient->setValue($this, $this->mockClient);
+                    $propConnected = $refClass->getProperty('connected');
+                    $propConnected->setAccessible(true);
+                    $propConnected->setValue($this, true);
+                    return true;
+                }
+                return parent::connect();
+            }
+
+            public function callSimpleRequest(string $m, Message $a, string $c): Message
+            {
+                return $this->simpleRequest($m, $a, $c);
+            }
+        };
         $baseClient->mockClient = $mockClient;
         $baseClient->connect();
 
@@ -170,7 +210,29 @@ class BaseClientTest extends TestCase
 
         $mockClient->expects($this->once())->method('recv')->willReturn(false);
 
-        $baseClient = new TestBaseClient('127.0.0.1', 8080);
+        $baseClient = new class ('127.0.0.1', 8080) extends BaseClient {
+            public ?Client $mockClient = null;
+
+            public function connect(): bool
+            {
+                if ($this->mockClient) {
+                    $refClass = new \ReflectionClass(BaseClient::class);
+                    $propClient = $refClass->getProperty('client');
+                    $propClient->setAccessible(true);
+                    $propClient->setValue($this, $this->mockClient);
+                    $propConnected = $refClass->getProperty('connected');
+                    $propConnected->setAccessible(true);
+                    $propConnected->setValue($this, true);
+                    return true;
+                }
+                return parent::connect();
+            }
+
+            public function callSimpleRequest(string $m, Message $a, string $c): Message
+            {
+                return $this->simpleRequest($m, $a, $c);
+            }
+        };
         $baseClient->mockClient = $mockClient;
         $baseClient->connect();
 

@@ -53,7 +53,7 @@ class BaseClient
         return $this->connected && $this->client && $this->client->connected;
     }
 
-    public function _simpleRequest(
+    public function simpleRequest(
         string $method,
         \Google\Protobuf\Internal\Message $argument,
         string $deserializeClass,

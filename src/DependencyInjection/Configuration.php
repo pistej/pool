@@ -18,7 +18,11 @@ class Configuration implements ConfigurationInterface
             ->children()
             ->scalarNode('worker_started_event')
             ->defaultNull()
-            ->info('The FQCN of the worker started event to hook into (e.g. SwooleBundle\Server\Event\WorkerStartedEvent). If left null, pools must be initialized manually or by a custom subscriber.')
+            ->info(
+                'The FQCN of the worker started event to hook into ' .
+                '(e.g. SwooleBundle\Server\Event\WorkerStartedEvent). ' .
+                'If left null, pools must be initialized manually or by a custom subscriber.'
+            )
             ->end()
             ->arrayNode('pools')
             ->useAttributeAsKey('name')
