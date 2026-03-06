@@ -13,8 +13,8 @@ class ProxyInterfaceAliasPass implements CompilerPassInterface
     public function process(ContainerBuilder $container): void
     {
         // We look for all services we registered as proxies.
-        // We didn't tag them explicitly, but we can iterate over definitions 
-        // that were registered by our extension. 
+        // We didn't tag them explicitly, but we can iterate over definitions
+        // that were registered by our extension.
         // Alternatively, let's tag them in the Extension.
 
         $taggedServices = $container->findTaggedServiceIds('sfrpc_pool.proxy');
@@ -29,7 +29,7 @@ class ProxyInterfaceAliasPass implements CompilerPassInterface
 
             $reflection = new \ReflectionClass($class);
             foreach ($reflection->getInterfaceNames() as $interface) {
-                // Sfrpc interfaces should be aliased. 
+                // Sfrpc interfaces should be aliased.
                 // We skip common system interfaces if needed.
                 if (!$container->has($interface) && !$container->hasAlias($interface)) {
                     $container->setAlias($interface, $id)->setPublic(true);

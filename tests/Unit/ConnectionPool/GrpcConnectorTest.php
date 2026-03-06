@@ -8,25 +8,6 @@ use PHPUnit\Framework\TestCase;
 use Sfrpc\Pool\ConnectionPool\GrpcConnector;
 use Sfrpc\Pool\Grpc\BaseClient;
 
-// We need a dummy subclass to mock BaseClient easily since it doesn't have an interface
-class DummyBaseClient extends BaseClient
-{
-    public function __construct()
-    {
-    }
-    public function connect(): bool
-    {
-        return true;
-    }
-    public function close(): void
-    {
-    }
-    public function isConnected(): bool
-    {
-        return true;
-    }
-}
-
 class GrpcConnectorTest extends TestCase
 {
     public function testConnectReturnsBaseClientInstance(): void
@@ -43,17 +24,23 @@ class GrpcConnectorTest extends TestCase
     {
         $connector = new GrpcConnector('127.0.0.1', 8080);
 
-        $mockClient = $this->createMock(DummyBaseClient::class);
-        $mockClient->expects($this->once())->method('close');
+        $dummyClient = new class ('127.0.0.1', 8080) extends BaseClient {
+            public bool $closedCalled = false;
+            public function close(): void
+            {
+                $this->closedCalled = true;
+            }
+        };
 
-        $connector->disconnect($mockClient);
+        $connector->disconnect($dummyClient);
+        $this->assertTrue($dummyClient->closedCalled);
     }
 
     public function testIsConnectedChecksBaseClient(): void
     {
         $connector = new GrpcConnector('127.0.0.1', 8080);
 
-        $mockClient = $this->createMock(DummyBaseClient::class);
+        $mockClient = $this->createMock(BaseClient::class);
         $mockClient->expects($this->once())
             ->method('isConnected')
             ->willReturn(true);
@@ -71,6 +58,6 @@ class GrpcConnectorTest extends TestCase
 
         // Since reset is empty, this just shouldn't throw an error
         $connector->reset($client);
-        $this->assertTrue(true);
+        $this->expectNotToPerformAssertions();
     }
 }

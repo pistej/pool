@@ -63,7 +63,7 @@ class ConnectionPool
 
         /** @var ConnectionWrapper $wrapper */
         $connection = $wrapper->getConnection();
-        $this->debug("Borrowed connection. Available in pool: " . $this->pool->length());
+        $this->debug("Borrowed connection. Available in pool: " . (string) $this->pool->length());
 
         if (!$this->connector->isConnected($connection)) {
             $this->connector->disconnect($connection);
@@ -94,7 +94,7 @@ class ConnectionPool
                 $this->debug("Pool full, dropping returned connection");
                 $this->removeConnection($connection);
             } else {
-                $this->debug("Returned connection. Available in pool: " . $this->pool->length());
+                $this->debug("Returned connection. Available in pool: " . (string) $this->pool->length());
             }
         } catch (\Throwable $e) {
             $this->removeConnection($connection);

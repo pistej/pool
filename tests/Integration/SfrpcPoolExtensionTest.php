@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Sfrpc\Pool\Tests\Integration;
@@ -6,15 +7,9 @@ namespace Sfrpc\Pool\Tests\Integration;
 use PHPUnit\Framework\TestCase;
 use Sfrpc\Pool\ConnectionPool\ConnectionPool;
 use Sfrpc\Pool\DependencyInjection\SfrpcPoolExtension;
+use Sfrpc\Pool\Tests\Fixtures\DummyInterface;
+use Sfrpc\Pool\Tests\Fixtures\DummyProxy;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-
-interface DummyInterface
-{
-}
-
-class DummyProxy implements DummyInterface
-{
-}
 
 class SfrpcPoolExtensionTest extends TestCase
 {
