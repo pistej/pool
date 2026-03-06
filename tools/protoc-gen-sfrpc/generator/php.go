@@ -13,6 +13,7 @@ func generateInterface(gen *protogen.Plugin, file *protogen.File, service *proto
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 
 	g.P("<?php")
+	g.P()
 	g.P("declare(strict_types=1);")
 	g.P()
 	g.P("namespace ", namespace, ";")
@@ -36,6 +37,7 @@ func generateClient(gen *protogen.Plugin, file *protogen.File, service *protogen
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 
 	g.P("<?php")
+	g.P()
 	g.P("declare(strict_types=1);")
 	g.P()
 	g.P("namespace ", namespace, ";")
@@ -52,7 +54,7 @@ func generateClient(gen *protogen.Plugin, file *protogen.File, service *protogen
 
 		g.P("    public function ", method.GoName, "(", reqType, " $request, ?ClientContext $context = null): ", respType)
 		g.P("    {")
-		g.P("        return $this->_simpleRequest('", path, "', $request, ", respType, "::class, $context);")
+		g.P("        return $this->simpleRequest('", path, "', $request, ", respType, "::class, $context);")
 		g.P("    }")
 	}
 	g.P("}")
@@ -65,6 +67,7 @@ func generateProxy(gen *protogen.Plugin, file *protogen.File, service *protogen.
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 
 	g.P("<?php")
+	g.P()
 	g.P("declare(strict_types=1);")
 	g.P()
 	g.P("namespace ", namespace, ";")
@@ -82,13 +85,15 @@ func generateProxy(gen *protogen.Plugin, file *protogen.File, service *protogen.
 
 		g.P("    public function ", method.GoName, "(", reqType, " $request, ?ClientContext $context = null): ", respType)
 		g.P("    {")
-		g.P("        /** @var BaseClient $client */")
-		g.P("        $client = $this->pool->borrow();")
-		g.P("        try {")
-		g.P("            return $client->_simpleRequest('", path, "', $request, ", respType, "::class, $context);")
-		g.P("        } finally {")
-		g.P("            $this->pool->return($client);")
-		g.P("        }")
+		g.P("        return $this->executeInContext(function () use ($request, $context) {")
+		g.P("            /** @var BaseClient $client */")
+		g.P("            $client = $this->pool->borrow();")
+		g.P("            try {")
+		g.P("                return $client->simpleRequest('", path, "', $request, ", respType, "::class, $context);")
+		g.P("            } finally {")
+		g.P("                $this->pool->return($client);")
+		g.P("            }")
+		g.P("        });")
 		g.P("    }")
 	}
 	g.P("}")

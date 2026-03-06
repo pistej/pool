@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package fastApi;
+
+option php_namespace = "Wss\\Tool\\Grpc";
+option php_metadata_namespace = "Wss\\Tool\\Grpc\\GPBMetadata";
+option go_package = "./;sfrpc";
+
+import "google/protobuf/empty.proto";
+
+service Domain {
+  rpc GetInfo (GetInfoRequest) returns (DomainInfo) {
+  }
+}
+
+message GetInfoRequest {
+  string domain = 1;
+}
+
+message DomainInfo {
+  string name = 1;
+}
