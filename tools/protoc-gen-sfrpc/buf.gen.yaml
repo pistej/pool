@@ -5,6 +5,6 @@ plugins:
   - protoc_builtin: php
     out: .
 
-  - local: protoc-gen-sfrpc
+  - local: [go, run, main.go]
     out: .
     strategy: all
