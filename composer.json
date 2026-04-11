@@ -6,11 +6,11 @@
     "require": {
         "php": ">=8.3",
         "ext-swoole": "*",
-        "google/protobuf": "^4.26",
-        "symfony/config": "^7.0",
-        "symfony/dependency-injection": "^7.0",
-        "symfony/event-dispatcher": "^7.0",
-        "symfony/http-kernel": "^7.0"
+        "google/protobuf": "^5.3",
+        "symfony/config": "^7.4 || ^8.0",
+        "symfony/dependency-injection": "^7.4 || ^8.0",
+        "symfony/event-dispatcher": "^7.4 || ^8.0",
+        "symfony/http-kernel": "^7.4 || ^8.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.0",

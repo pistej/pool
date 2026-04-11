@@ -9,6 +9,7 @@ use Psr\Log\NullLogger;
 use Swoole\Coroutine;
 use Swoole\Coroutine\Channel;
 use Swoole\Timer;
+use Throwable;
 
 class ConnectionPool
 {
@@ -96,7 +97,7 @@ class ConnectionPool
             } else {
                 $this->debug("Returned connection. Available in pool: " . (string) $this->pool->length());
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->removeConnection($connection);
             $this->logger->error("Failed to return connection: " . $e->getMessage());
         }
@@ -130,7 +131,7 @@ class ConnectionPool
             $wrapper = new ConnectionWrapper($connection, microtime(true));
             $this->pool->push($wrapper, 0.001);
             $this->debug("Created new connection. Total connections: {$this->connectionCount}");
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->error("Failed to create connection: " . $e->getMessage());
         }
     }
@@ -175,7 +176,7 @@ class ConnectionPool
         Coroutine::create(function () use ($connection) {
             try {
                 $this->connector->disconnect($connection);
-            } catch (\Throwable $e) {
+            } catch (Throwable) {
                 // Ignore this exception.
             }
         });
