@@ -14,6 +14,8 @@ RUN go build -o /usr/local/bin/protoc-gen-sfrpc .
 # Stage 2: Final development/testing image
 FROM golang:1.26-alpine
 
+ENV GOFLAGS="-buildvcs=false"
+
 # Install essential tools and protoc
 RUN apk add --no-cache \
     curl \
@@ -30,4 +32,4 @@ COPY --from=builder /usr/local/bin/protoc-gen-sfrpc /usr/local/bin/protoc-gen-sf
 
 WORKDIR /var/www
 
-CMD ["tail", "-f", "/dev/null"]
+CMD ["buf", "generate"]
