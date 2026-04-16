@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Sfrpc\Pool\DependencyInjection\Compiler;
 
+use ReflectionClass;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Definition;
 
 class ProxyInterfaceAliasPass implements CompilerPassInterface
 {
@@ -27,7 +27,7 @@ class ProxyInterfaceAliasPass implements CompilerPassInterface
                 continue;
             }
 
-            $reflection = new \ReflectionClass($class);
+            $reflection = new ReflectionClass($class);
             foreach ($reflection->getInterfaceNames() as $interface) {
                 // Sfrpc interfaces should be aliased.
                 // We skip common system interfaces if needed.

@@ -39,8 +39,13 @@ Create `config/packages/sfrpc_pool.yaml`:
 ```yaml
 sfrpc_pool:
     # Optional: The event to listen for to initialize pools automatically. 
-    # If using k911/swoole-bundle, use: 'SwooleBundle\Server\Event\WorkerStartedEvent'
-    worker_started_event: 'App\Event\MySwooleWorkerStartedEvent' 
+    worker_started_event: 'App\Event\MySwooleWorkerStartedEvent'
+    # if using symfony-swoole/swoole-bundle, event NAME can be used
+#    worker_started_event: !php/const SwooleBundle\SwooleBundle\Bridge\Symfony\Event\WorkerStartedEvent::NAME
+    # Optional: Events to close pools automatically on worker lifecycle shutdown paths
+    worker_stop_event: !php/const SwooleBundle\SwooleBundle\Bridge\Symfony\Event\WorkerStopEvent::NAME
+    worker_exit_event: !php/const SwooleBundle\SwooleBundle\Bridge\Symfony\Event\WorkerExitEvent::NAME
+    worker_error_event: !php/const SwooleBundle\SwooleBundle\Bridge\Symfony\Event\WorkerErrorEvent::NAME
 
     pools:
         default:
@@ -52,7 +57,7 @@ sfrpc_pool:
             max_wait_time: 5.0      # Seconds to wait for a free connection
             max_idle_time: 60.0     # Max time a connection can stay idle
             idle_check_interval: 30.0 # How often to check for idle connections
-            debug_logs: false         # Optional: Enable detailed pool operation logs (default: false)
+            debug_logs: '%kernel.debug%' # Optional: Enable detailed pool operation logs (default: false),
             swoole_settings:
                 # Optional: Swoole-specific client settings
                 timeout: 5.0
@@ -135,3 +140,13 @@ docker compose exec sfrpc-go-test go test -v ./...
 ```bash
 docker compose exec sfrpc-go-test buf generate
 ```
+
+
+## TODO
+
+Look in rest-connection and plugins for inspiration
+
+- [ ] Add support for array cache
+- [ ] Add support for sentry_tracing
+- [ ] Add support for slower retry if host/port is not available
+- [ ] Add support for 

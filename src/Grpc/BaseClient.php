@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sfrpc\Pool\Grpc;
 
+use Google\Protobuf\Internal\Message;
 use Sfrpc\Pool\Grpc\Exception\GrpcException;
 use Swoole\Coroutine\Http2\Client;
 use Swoole\Http2\Request;
@@ -55,10 +56,10 @@ class BaseClient
 
     public function simpleRequest(
         string $method,
-        \Google\Protobuf\Internal\Message $argument,
+        Message $argument,
         string $deserializeClass,
         ?ClientContext $context = null
-    ): \Google\Protobuf\Internal\Message {
+    ): Message {
         if (!$this->isConnected()) {
             if (!$this->connect()) {
                 throw new GrpcException("Failed to connect to {$this->host}:{$this->port}");
@@ -121,7 +122,7 @@ class BaseClient
             $data = substr($data, 5);
         }
 
-        /** @var \Google\Protobuf\Internal\Message $message */
+        /** @var Message $message */
         $message = new $deserializeClass();
         $message->mergeFromString($data);
 

@@ -20,6 +20,9 @@ class SfrpcPoolExtensionTest extends TestCase
 
         $config = [
             'worker_started_event' => 'App\Event\WorkerStart',
+            'worker_stop_event' => 'App\Event\WorkerStop',
+            'worker_exit_event' => 'App\Event\WorkerExit',
+            'worker_error_event' => 'App\Event\WorkerError',
             'pools' => [
                 'greeter' => [
                     'host' => '127.0.0.1',
@@ -52,6 +55,23 @@ class SfrpcPoolExtensionTest extends TestCase
         $this->assertTrue($proxyDef->isPublic());
         $this->assertTrue($proxyDef->isAutowired());
         $this->assertTrue($proxyDef->hasTag('sfrpc_pool.proxy'));
+
+        // 4. Assert lifecycle subscriber listeners
+        $subscriberDef = $container->getDefinition(\Sfrpc\Pool\EventSubscriber\PoolLifecycleSubscriber::class);
+        /** @var array<int, array{event: string, method: string}> $listeners */
+        $listeners = $subscriberDef->getTag('kernel.event_listener');
+        $this->assertCount(4, $listeners);
+
+        /** @var array<string, string> $listenerMap */
+        $listenerMap = [];
+        foreach ($listeners as $listener) {
+            $listenerMap[$listener['event']] = $listener['method'];
+        }
+
+        $this->assertSame('onWorkerStarted', $listenerMap['App\Event\WorkerStart']);
+        $this->assertSame('onWorkerStopped', $listenerMap['App\Event\WorkerStop']);
+        $this->assertSame('onWorkerExited', $listenerMap['App\Event\WorkerExit']);
+        $this->assertSame('onWorkerErrored', $listenerMap['App\Event\WorkerError']);
     }
 
     public function testCompilerPassAliasesInterfaces(): void

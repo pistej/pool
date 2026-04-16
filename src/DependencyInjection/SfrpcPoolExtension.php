@@ -18,7 +18,23 @@ class SfrpcPoolExtension extends Extension
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
-        /** @var array{worker_started_event?: string, pools: array<string, array{min_active: int, max_active: int, max_wait_time: float, max_idle_time: float, idle_check_interval: float, debug_logs: bool, host: string, port: int, ssl: bool, swoole_settings?: array<string, mixed>, proxies?: string[]}>} $config */
+        /** @var array{
+         *     worker_started_event?: string|null,
+         *     worker_stop_event?: string|null,
+         *     worker_exit_event?: string|null,
+         *     worker_error_event?: string|null,
+         *     pools: array<string, array{
+         *         min_active: int,
+         *         max_active: int,
+         *         max_wait_time: float,
+         *         max_idle_time: float,
+         *         idle_check_interval: float,
+         *         debug_logs: bool, host: string,
+         *         port: int, ssl: bool,
+         *         swoole_settings?: array<string, mixed>, proxies?: string[]
+         *         }>
+         *     } $config
+         */
         $config = $this->processConfiguration($configuration, $configs);
 
         $poolServices = [];
@@ -79,16 +95,37 @@ class SfrpcPoolExtension extends Extension
             $container->setAlias(ConnectionPool::class, $defaultPoolId)->setPublic(true);
         }
 
-        if (!empty($config['worker_started_event'])) {
+        $lifecycleEvents = [
+            'worker_started_event' => 'onWorkerStarted',
+            'worker_stop_event' => 'onWorkerStopped',
+            'worker_exit_event' => 'onWorkerExited',
+            'worker_error_event' => 'onWorkerErrored'
+        ];
+
+        $hasLifecycleEvents = false;
+        foreach (array_keys($lifecycleEvents) as $eventConfigKey) {
+            if (!empty($config[$eventConfigKey])) {
+                $hasLifecycleEvents = true;
+                break;
+            }
+        }
+
+        if ($hasLifecycleEvents) {
             $subscriberDef = new Definition(PoolLifecycleSubscriber::class, [
                 $poolServices
             ]);
             $subscriberDef->setAutowired(true);
             $subscriberDef->setPublic(true);
-            $subscriberDef->addTag('kernel.event_listener', [
-                'event' => $config['worker_started_event'],
-                'method' => 'onWorkerStarted'
-            ]);
+
+            foreach ($lifecycleEvents as $eventConfigKey => $method) {
+                if (!empty($config[$eventConfigKey])) {
+                    $subscriberDef->addTag('kernel.event_listener', [
+                        'event' => $config[$eventConfigKey],
+                        'method' => $method
+                    ]);
+                }
+            }
+
             $container->setDefinition(PoolLifecycleSubscriber::class, $subscriberDef);
         }
     }
