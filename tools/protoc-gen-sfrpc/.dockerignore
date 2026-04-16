@@ -1,0 +1,5 @@
+# testdata generated output
+testdata/out
+
+# go bin file
+protoc-gen-sfrpc

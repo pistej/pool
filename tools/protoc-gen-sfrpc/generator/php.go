@@ -6,11 +6,16 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
-func generateInterface(gen *protogen.Plugin, file *protogen.File, service *protogen.Service) {
+func newPhpFile(gen *protogen.Plugin, file *protogen.File, service *protogen.Service, suffix string) *protogen.GeneratedFile {
 	namespace := GetPhpNamespace(file.Desc)
 	dir := strings.ReplaceAll(namespace, "\\", "/")
-	filename := dir + "/" + service.GoName + "ClientInterface.php"
-	g := gen.NewGeneratedFile(filename, file.GoImportPath)
+	filename := dir + "/" + service.GoName + suffix
+	return gen.NewGeneratedFile(filename, file.GoImportPath)
+}
+
+func generateInterface(gen *protogen.Plugin, file *protogen.File, service *protogen.Service) {
+	namespace := GetPhpNamespace(file.Desc)
+	g := newPhpFile(gen, file, service, "ClientInterface.php")
 
 	g.P("<?php")
 	g.P()
@@ -32,9 +37,7 @@ func generateInterface(gen *protogen.Plugin, file *protogen.File, service *proto
 
 func generateClient(gen *protogen.Plugin, file *protogen.File, service *protogen.Service) {
 	namespace := GetPhpNamespace(file.Desc)
-	dir := strings.ReplaceAll(namespace, "\\", "/")
-	filename := dir + "/" + service.GoName + "Client.php"
-	g := gen.NewGeneratedFile(filename, file.GoImportPath)
+	g := newPhpFile(gen, file, service, "Client.php")
 
 	g.P("<?php")
 	g.P()
@@ -62,9 +65,7 @@ func generateClient(gen *protogen.Plugin, file *protogen.File, service *protogen
 
 func generateProxy(gen *protogen.Plugin, file *protogen.File, service *protogen.Service) {
 	namespace := GetPhpNamespace(file.Desc)
-	dir := strings.ReplaceAll(namespace, "\\", "/")
-	filename := dir + "/" + service.GoName + "ClientProxy.php"
-	g := gen.NewGeneratedFile(filename, file.GoImportPath)
+	g := newPhpFile(gen, file, service, "ClientProxy.php")
 
 	g.P("<?php")
 	g.P()
