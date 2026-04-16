@@ -6,7 +6,7 @@ namespace Sfrpc\Pool\EventSubscriber;
 
 use Sfrpc\Pool\ConnectionPool\ConnectionPool;
 
-class PoolLifecycleSubscriber
+readonly class PoolLifecycleSubscriber
 {
     /**
      * @param iterable<ConnectionPool> $pools
@@ -19,6 +19,27 @@ class PoolLifecycleSubscriber
     {
         foreach ($this->pools as $pool) {
             $pool->init();
+        }
+    }
+
+    public function onWorkerStopped(object $event): void
+    {
+        foreach ($this->pools as $pool) {
+            $pool->close();
+        }
+    }
+
+    public function onWorkerExited(object $event): void
+    {
+        foreach ($this->pools as $pool) {
+            $pool->close();
+        }
+    }
+
+    public function onWorkerErrored(object $event): void
+    {
+        foreach ($this->pools as $pool) {
+            $pool->close();
         }
     }
 }

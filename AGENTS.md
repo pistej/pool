@@ -33,6 +33,8 @@ docker compose up -d
 # PHP Backend:
 docker compose exec swoole-php vendor/bin/phpunit
 docker compose exec swoole-php vendor/bin/phpstan analyse
+# If PHPStan crashes on memory in this container, retry with:
+docker compose exec swoole-php vendor/bin/phpstan analyse --memory-limit=512M
 docker compose exec swoole-php vendor/bin/phpcs
 
 # Go Plugin:

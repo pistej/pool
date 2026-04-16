@@ -24,6 +24,30 @@ class Configuration implements ConfigurationInterface
                 'If left null, pools must be initialized manually or by a custom subscriber.'
             )
             ->end()
+            ->scalarNode('worker_stop_event')
+            ->defaultNull()
+            ->info(
+                'The FQCN of the worker stop event to hook into ' .
+                '(e.g. SwooleBundle\Server\Event\WorkerStopEvent). ' .
+                'If left null, this lifecycle hook is ignored.'
+            )
+            ->end()
+            ->scalarNode('worker_exit_event')
+            ->defaultNull()
+            ->info(
+                'The FQCN of the worker exit event to hook into ' .
+                '(e.g. SwooleBundle\Server\Event\WorkerExitEvent). ' .
+                'If left null, this lifecycle hook is ignored.'
+            )
+            ->end()
+            ->scalarNode('worker_error_event')
+            ->defaultNull()
+            ->info(
+                'The FQCN of the worker error event to hook into ' .
+                '(e.g. SwooleBundle\Server\Event\WorkerErrorEvent). ' .
+                'If left null, this lifecycle hook is ignored.'
+            )
+            ->end()
             ->arrayNode('pools')
             ->useAttributeAsKey('name')
             ->arrayPrototype()
