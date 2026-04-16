@@ -15,7 +15,7 @@ func main() {
 		},
 	}.Run(func(gen *protogen.Plugin) error {
 		gen.SupportedFeatures = uint64(1) // grpc.SupportProto3Optional is usually 1 if needed
-		
+
 		for _, f := range gen.Files {
 			if !f.Generate {
 				continue

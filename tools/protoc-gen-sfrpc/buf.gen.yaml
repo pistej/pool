@@ -1,10 +1,13 @@
 version: v2
 
+inputs:
+  - proto_file: testdata/test.proto
+
 plugins:
 
   - protoc_builtin: php
-    out: .
+    out: testdata/out
 
   - local: [go, run, main.go]
-    out: .
+    out: testdata/out
     strategy: all

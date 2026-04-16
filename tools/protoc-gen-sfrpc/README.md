@@ -11,8 +11,13 @@ A custom gRPC code generator for PHP, specifically designed to work with the `sf
 ## Architecture
 
 - `main.go`: The plugin entry point.
-- `generator/`: Contains the core PHP generation logic (`php.go`).
-- `tests/`: Integration tests ensuring correct PHP code emission.
+- `generator/generator.go`: Orchestrates per-file code generation.
+- `generator/helpers.go`: PHP namespace and class name utilities.
+- `generator/php.go`: Emits interface, client, and proxy PHP files.
+- `generator/generator_test.go`: Unit tests for the generator package.
+- `testdata/test.proto`: Sample proto used for manual generation testing.
+- `testdata/golden/`: Committed golden PHP files used by `TestGenerateFile` to verify output correctness.
+- `testdata/out/`: Output directory for `buf generate` (generated, not committed).
 - `buf.gen.yaml`: Configuration for the `buf` CLI.
 
 ## Development & Usage
@@ -28,11 +33,13 @@ docker compose up -d sfrpc-go-test
 
 ### Generating PHP Code
 
-To regenerate PHP classes from your `.proto` files (e.g., `test.proto`), run:
+To regenerate PHP classes from `testdata/test.proto`, run:
 
 ```bash
 docker compose exec sfrpc-go-test buf generate
 ```
+
+Output is written to `testdata/out/`.
 
 > [!TIP]
 > The `buf.gen.yaml` is configured to use `go run main.go`. This means any changes you make to the `.go` generator source files are applied **instantly** when you run `buf generate`, without needing to recompile the binary or rebuild the Docker image.
@@ -45,10 +52,16 @@ To run the Go plugin's internal tests:
 docker compose exec sfrpc-go-test go test -v ./...
 ```
 
-### Manual Compilation (Optional)
-
-If you need to produce a static binary for use outside of the dynamic `buf` workflow:
+`TestGenerateFile` compares generator output against committed golden files in `testdata/golden/`. If you change the PHP generation logic, regenerate the golden files with:
 
 ```bash
-docker compose exec sfrpc-go-test go build -o protoc-gen-sfrpc main.go
+docker compose exec sfrpc-go-test go test -v ./generator/ -update
+```
+
+### Manual Compilation (Optional)
+
+Produces a self-contained **statically linked** binary (no runtime dependencies):
+
+```bash
+docker compose exec sfrpc-go-test go build -buildvcs=false -o protoc-gen-sfrpc .
 ```
