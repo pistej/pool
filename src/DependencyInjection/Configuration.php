@@ -69,6 +69,10 @@ class Configuration implements ConfigurationInterface
             ->info('A list of FQCNs of generated Proxy classes that should use this pool.')
             ->end()
             ->end()
+            ->validate()
+            ->ifTrue(fn (array $v): bool => $v['min_active'] > $v['max_active'])
+            ->thenInvalid('min_active must be <= max_active')
+            ->end()
             ->end()
             ->end()
             ->end();

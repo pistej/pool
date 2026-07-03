@@ -24,8 +24,9 @@ func generateInterface(gen *protogen.Plugin, file *protogen.File, service *proto
 	g.P("namespace ", namespace, ";")
 	g.P()
 	g.P("use Sfrpc\\Pool\\Grpc\\ClientContext;")
+	g.P("use Sfrpc\\Pool\\Grpc\\SfrpcClientInterface;")
 	g.P()
-	g.P("interface ", service.GoName, "ClientInterface")
+	g.P("interface ", service.GoName, "ClientInterface extends SfrpcClientInterface")
 	g.P("{")
 	for _, method := range service.Methods {
 		reqType := GetPhpClassName(method.Input.Desc)

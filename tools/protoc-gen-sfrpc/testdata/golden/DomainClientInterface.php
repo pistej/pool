@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Wss\Tool\Grpc;
 
 use Sfrpc\Pool\Grpc\ClientContext;
+use Sfrpc\Pool\Grpc\SfrpcClientInterface;
 
-interface DomainClientInterface
+interface DomainClientInterface extends SfrpcClientInterface
 {
     public function GetInfo(\Wss\Tool\Grpc\GetInfoRequest $request, ?ClientContext $context = null): \Wss\Tool\Grpc\DomainInfo;
 }

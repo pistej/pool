@@ -11,7 +11,7 @@ readonly class PoolLifecycleSubscriber
     /**
      * @param iterable<ConnectionPool> $pools
      */
-    public function __construct(private readonly iterable $pools)
+    public function __construct(private iterable $pools)
     {
     }
 

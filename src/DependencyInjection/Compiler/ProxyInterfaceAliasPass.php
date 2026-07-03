@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sfrpc\Pool\DependencyInjection\Compiler;
 
 use ReflectionClass;
+use Sfrpc\Pool\Grpc\SfrpcClientInterface;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
@@ -29,8 +30,16 @@ class ProxyInterfaceAliasPass implements CompilerPassInterface
 
             $reflection = new ReflectionClass($class);
             foreach ($reflection->getInterfaceNames() as $interface) {
-                // Sfrpc interfaces should be aliased.
-                // We skip common system interfaces if needed.
+                // Only alias actual generated sfrpc client interfaces (identified via
+                // the SfrpcClientInterface marker), not every interface the proxy
+                // happens to implement. Aliasing everything (including inherited or
+                // system interfaces like Stringable, or unrelated app interfaces -
+                // even ones that happen to also be named "*ClientInterface") could
+                // hijack unrelated autowiring in the host application.
+                if (!is_subclass_of($interface, SfrpcClientInterface::class)) {
+                    continue;
+                }
+
                 if (!$container->has($interface) && !$container->hasAlias($interface)) {
                     $container->setAlias($interface, $id)->setPublic(true);
                 }

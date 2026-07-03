@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sfrpc\Pool\ConnectionPool;
 
+use RuntimeException;
 use Sfrpc\Pool\Grpc\BaseClient;
 
 class GrpcConnector implements ConnectorInterface
@@ -22,7 +23,9 @@ class GrpcConnector implements ConnectorInterface
     public function connect(): object
     {
         $client = new BaseClient($this->host, $this->port, $this->ssl, $this->swooleSettings);
-        $client->connect();
+        if (!$client->connect()) {
+            throw new RuntimeException("Failed to connect to {$this->host}:{$this->port}");
+        }
         return $client;
     }
 

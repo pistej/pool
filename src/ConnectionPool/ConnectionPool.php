@@ -51,32 +51,34 @@ class ConnectionPool
             throw new \RuntimeException("Pool is closed");
         }
 
-        $connection = null;
-        if ($this->pool->isEmpty() && $this->connectionCount < $this->config->maxActive) {
-            $this->createConnection();
-        }
+        $maxAttempts = $this->config->maxActive + 1;
 
-        $wrapper = $this->pool->pop($this->config->maxWaitTime);
-        if ($wrapper === false) {
-            $this->debug("Pool timeout after {$this->config->maxWaitTime}s, no connection available");
-            throw new \RuntimeException("Pool timeout after {$this->config->maxWaitTime}s, no connection available");
-        }
+        for ($attempts = 1; $attempts <= $maxAttempts; $attempts++) {
+            if ($this->pool->isEmpty() && $this->connectionCount < $this->config->maxActive) {
+                $this->createConnection();
+            }
 
-        /** @var ConnectionWrapper $wrapper */
-        $connection = $wrapper->getConnection();
-        $this->debug("Borrowed connection. Available in pool: " . (string) $this->pool->length());
+            $wrapper = $this->pool->pop($this->config->maxWaitTime);
+            if ($wrapper === false) {
+                $message = "Pool timeout after {$this->config->maxWaitTime}s, no connection available";
+                $this->debug($message);
+                throw new \RuntimeException($message);
+            }
 
-        if (!$this->connector->isConnected($connection)) {
+            /** @var ConnectionWrapper $wrapper */
+            $connection = $wrapper->getConnection();
+            $this->debug("Borrowed connection. Available in pool: " . (string) $this->pool->length());
+
+            if ($this->connector->isConnected($connection)) {
+                return $connection;
+            }
+
             $this->connector->disconnect($connection);
             $this->connectionCount--;
-            $this->logger->warning("Borrowed connection was dead, creating new one.");
-
-            // Re-borrow recursively
-            return $this->borrow();
+            $this->logger->warning("Borrowed connection was dead, retrying ({$attempts}/{$maxAttempts}).");
         }
-        //todo: do we need reset? is in return
 
-        return $connection;
+        throw new \RuntimeException("Unable to obtain a live connection after {$maxAttempts} attempts");
     }
 
     public function return(object $connection): void
@@ -105,33 +107,55 @@ class ConnectionPool
 
     public function close(): void
     {
+        if ($this->closed) {
+            return;
+        }
+
         $this->debug("Closing pool");
         $this->closed = true;
         if ($this->checkTimerId > 0) {
             Timer::clear($this->checkTimerId);
+            $this->checkTimerId = 0;
         }
 
-        Coroutine::create(function () {
+        $drain = function (): void {
             while (!$this->pool->isEmpty()) {
-                /** @var ConnectionWrapper $wrapper */
+                /** @var ConnectionWrapper|false $wrapper */
                 $wrapper = $this->pool->pop(0.001);
-                if ($wrapper) {
+                if ($wrapper instanceof ConnectionWrapper) {
                     $this->removeConnection($wrapper->getConnection());
                 }
             }
             $this->pool->close();
-        });
+        };
+
+        // If we're already running inside a coroutine, drain synchronously.
+        // Coroutine::create() during __destruct() at process/request shutdown (outside
+        // any scheduler) fails and the connections would never be released (H4).
+        if (Coroutine::getCid() !== -1) {
+            $drain();
+        } else {
+            Coroutine::create($drain);
+        }
     }
 
     private function createConnection(): void
     {
+        // Reserve the slot before the (yielding) connect call so that concurrent
+        // borrow() calls can't all pass the connectionCount check at once (H1).
+        $this->connectionCount++;
         try {
             $connection = $this->connector->connect();
-            $this->connectionCount++;
             $wrapper = new ConnectionWrapper($connection, microtime(true));
-            $this->pool->push($wrapper, 0.001);
+            if (!$this->pool->push($wrapper, 0.001)) {
+                $this->connector->disconnect($connection);
+                $this->connectionCount--;
+                $this->debug("Channel full, discarding freshly created connection");
+                return;
+            }
             $this->debug("Created new connection. Total connections: {$this->connectionCount}");
         } catch (Throwable $e) {
+            $this->connectionCount--;
             $this->logger->error("Failed to create connection: " . $e->getMessage());
         }
     }
@@ -161,8 +185,11 @@ class ConnectionPool
             if (($time - $wrapper->getLastUsedAt()) > $this->config->maxIdleTime) {
                 $this->removeConnection($wrapper->getConnection());
                 $this->debug("Closed idle connection. Total connections: {$this->connectionCount}");
-            } else {
-                $this->pool->push($wrapper, 0.001);
+            } elseif (!$this->pool->push($wrapper, 0.001)) {
+                // Channel was full when trying to push the still-healthy connection
+                // back - don't silently drop it, close it properly instead (H3).
+                $this->removeConnection($wrapper->getConnection());
+                $this->debug("Channel full during idle check. Total connections: {$this->connectionCount}");
             }
 
             $checked++;

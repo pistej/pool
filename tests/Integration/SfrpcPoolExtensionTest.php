@@ -7,8 +7,11 @@ namespace Sfrpc\Pool\Tests\Integration;
 use PHPUnit\Framework\TestCase;
 use Sfrpc\Pool\ConnectionPool\ConnectionPool;
 use Sfrpc\Pool\DependencyInjection\SfrpcPoolExtension;
-use Sfrpc\Pool\Tests\Fixtures\DummyInterface;
+use Sfrpc\Pool\Tests\Fixtures\DummyClientInterface;
 use Sfrpc\Pool\Tests\Fixtures\DummyProxy;
+use Sfrpc\Pool\Tests\Fixtures\DummyUnrelatedInterface;
+use Sfrpc\Pool\Tests\Fixtures\UnrelatedAppClientInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 class SfrpcPoolExtensionTest extends TestCase
@@ -95,9 +98,66 @@ class SfrpcPoolExtensionTest extends TestCase
         $pass = new \Sfrpc\Pool\DependencyInjection\Compiler\ProxyInterfaceAliasPass();
         $pass->process($container);
 
-        // Assert that DummyInterface is now an alias for DummyProxy class definition
-        $this->assertTrue($container->hasAlias(DummyInterface::class));
-        $this->assertSame(DummyProxy::class, (string) $container->getAlias(DummyInterface::class));
-        $this->assertTrue($container->getAlias(DummyInterface::class)->isPublic());
+        // Assert that DummyClientInterface is now an alias for the DummyProxy class definition
+        $this->assertTrue($container->hasAlias(DummyClientInterface::class));
+        $this->assertSame(DummyProxy::class, (string) $container->getAlias(DummyClientInterface::class));
+        $this->assertTrue($container->getAlias(DummyClientInterface::class)->isPublic());
+    }
+
+    public function testCompilerPassDoesNotAliasNonClientInterfaces(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new SfrpcPoolExtension();
+
+        $config = [
+            'pools' => [
+                'default' => [
+                    'host' => '127.0.0.1',
+                    'port' => 80,
+                    'proxies' => [DummyProxy::class]
+                ]
+            ]
+        ];
+
+        $extension->load([$config], $container);
+
+        $pass = new \Sfrpc\Pool\DependencyInjection\Compiler\ProxyInterfaceAliasPass();
+        $pass->process($container);
+
+        // DummyProxy also implements DummyUnrelatedInterface, which does not follow the
+        // generated "...ClientInterface" naming convention. It must not be hijacked by
+        // aliasing it to the proxy service (H2).
+        $this->assertFalse($container->hasAlias(DummyUnrelatedInterface::class));
+
+        // DummyProxy also implements UnrelatedAppClientInterface, which *does* happen to
+        // match the "*ClientInterface" naming convention (e.g. a host application's own,
+        // unrelated "PaymentClientInterface"-style interface) but is not a generated
+        // sfrpc client contract (it doesn't extend SfrpcClientInterface). A naming-based
+        // check alone would incorrectly alias it; only the SfrpcClientInterface marker
+        // check should decide this (H2).
+        $this->assertFalse($container->hasAlias(UnrelatedAppClientInterface::class));
+    }
+
+    public function testRejectsMinActiveGreaterThanMaxActive(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new SfrpcPoolExtension();
+
+        $config = [
+            'pools' => [
+                'default' => [
+                    'host' => '127.0.0.1',
+                    'port' => 80,
+                    'min_active' => 5,
+                    'max_active' => 2,
+                ]
+            ]
+        ];
+
+        // min_active > max_active would otherwise let init() push more connections
+        // than the pool channel's capacity, silently leaking the excess ones (M5/C3).
+        $this->expectException(InvalidConfigurationException::class);
+
+        $extension->load([$config], $container);
     }
 }
